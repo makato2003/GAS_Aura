@@ -40,3 +40,12 @@ void AAuraEnemy::UnHighLightActor()
 		Weapon->SetRenderCustomDepth(false);
 	}
 }
+
+void AAuraEnemy::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// check GAS_Init_Ability_Actor_Info_001.png
+	AbilitySystemComponent->InitAbilityActorInfo(this, this);
+
+}
