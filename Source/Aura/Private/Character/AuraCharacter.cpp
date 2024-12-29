@@ -3,9 +3,12 @@
 
 #include "Character/AuraCharacter.h"
 
+#include "AbilitySystemComponent.h"
 #include "GameFrameWork/CharacterMovementComponent.h"
 #include "Player/AuraPlayerState.h"
-#include "AbilitySystemComponent.h"
+#include "Player/AuraPlayerController.h"
+
+#include "UI/HUD/AuraHUD.h"
 
 
 AAuraCharacter::AAuraCharacter()
@@ -33,6 +36,15 @@ void AAuraCharacter::InitAbilityActorInfo()
 
 	AbilitySystemComponent = ASC;
 	AttributeSet = AuraPlayerState->GetAttributeSet();
+
+	AAuraPlayerController* AuraPlayerController = Cast<AAuraPlayerController>(GetController());
+	if (AuraPlayerController) {
+	
+		if (AAuraHUD* AuraHUD = Cast<AAuraHUD>(AuraPlayerController->GetHUD())) {
+			// locally controlled player
+			AuraHUD->InitOverlay(AuraPlayerController, AuraPlayerState, AbilitySystemComponent, AttributeSet);
+		}
+	} // else other players
 }
 
 void AAuraCharacter::PossessedBy(AController* NewController)
