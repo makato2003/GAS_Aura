@@ -1,10 +1,9 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
+#include "GameplayEffectTypes.h"
+#include "AbilitySystemBlueprintLibrary.h"
 #include "Actor/AuraEffectActor.h"
-#include "Components/SphereComponent.h"
-#include "Components/StaticMeshComponent.h"
-
 #include "AbilitySystem/AuraAttributeSet.h"
 
 #include "AbilitySystemInterface.h"
@@ -13,55 +12,32 @@
 AAuraEffectActor::AAuraEffectActor()
 {
 	PrimaryActorTick.bCanEverTick = false;
+	SetRootComponent(CreateDefaultSubobject<USceneComponent>("SceneRoot"));
 
-	Mesh = CreateDefaultSubobject<UStaticMeshComponent>("Mesh");
-	SetRootComponent(Mesh);
-	
-	Sphere = CreateDefaultSubobject<USphereComponent>("Sphere");
-	Sphere->SetupAttachment(GetRootComponent());
 }
 
 void AAuraEffectActor::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	Sphere->OnComponentBeginOverlap.AddDynamic(this, &ThisClass::OnOverlap);
-	Sphere->OnComponentEndOverlap.AddDynamic(this, &ThisClass::EndOverlap);
+	
 }
 
-
-void AAuraEffectActor::OnOverlap(
-		UPrimitiveComponent* OverlappedComponent, 
-		AActor* OtherActor, 
-		UPrimitiveComponent* OtherComp, 
-		int32 OtherBodyIndex, 
-		bool bFromSweep, 
-		const FHitResult& SweepResult)
+void AAuraEffectActor::ApplyEffectToTarget(AActor* TargetActor, TSubclassOf<UGameplayEffect>	GameplayEffectClass)
 {
-	if(IAbilitySystemInterface* ASCInterface = Cast<IAbilitySystemInterface>(OtherActor)) {
-		
-		UAbilitySystemComponent* AbilitySystemComponent = ASCInterface->GetAbilitySystemComponent();
+	UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetActor);
 
-		if (AbilitySystemComponent) {
-			const UAuraAttributeSet* AuraAttributeSet = Cast<UAuraAttributeSet>(AbilitySystemComponent->GetAttributeSet(UAuraAttributeSet::StaticClass()));
-
-			// @TODO no no MUST apply gameplay effect...not recast to rid off const...
-
-			UAuraAttributeSet * mutable_AuraAttributeSet = const_cast<UAuraAttributeSet*>(AuraAttributeSet);
-
-			mutable_AuraAttributeSet->SetHealth(AuraAttributeSet->GetHealth() + 25.f);
-			Destroy();
-		}
-
+	if (TargetASC == nullptr) {
+		// Target actor may legit not have AbilitySystemComponent
+		return;
 	}
-}
+	// make sure class is set, or we crash....
+	check(GameplayEffectClass);
 
-void AAuraEffectActor::EndOverlap(
-		UPrimitiveComponent* OverlappedComponent,
-		AActor* OtherActor,
-		UPrimitiveComponent* OtherComp,
-		int32 OtherBodyIndex)
-{
+	FGameplayEffectContextHandle EffectContextHandle = TargetASC->MakeEffectContext();
+	EffectContextHandle.AddSourceObject(this);
+	const FGameplayEffectSpecHandle EffectSpecHandle = TargetASC->MakeOutgoingSpec(GameplayEffectClass, 1.f, EffectContextHandle);
 
+	TargetASC->ApplyGameplayEffectSpecToSelf(*EffectSpecHandle.Data.Get());
 }
 
